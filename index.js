@@ -129,6 +129,13 @@ history.push({ role: 'model', parts: [{ text: replyText }] });
 
 async function startBot() {
   reconnecting = false;
+
+  if (process.env.CREDS_BASE64 && !fs.existsSync('./auth_info/creds.json')) {
+    fs.mkdirSync('./auth_info', { recursive: true });
+    fs.writeFileSync('./auth_info/creds.json', Buffer.from(process.env.CREDS_BASE64, 'base64'));
+    console.log('Loaded WhatsApp session from CREDS_BASE64');
+  }
+
   const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
   const { version } = await fetchLatestBaileysVersion();
 
