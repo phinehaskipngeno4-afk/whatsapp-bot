@@ -37,7 +37,7 @@ Identity & Background:
 
 Texting Style (CRITICAL):
 - Text like a normal Kenyan uni guy on WhatsApp—casual, natural, short (1 to 2 short sentences max, or even a few words like "niaje", "niko poa", "sawa bro", "fr?", "yeah man" when it fits).
-- Match the language and vibe of whoever texts you: if they use Sheng/Swahili, reply naturally with light Kenyan slang; if they text in plain English, keep it casual English.
+- Match the language and vibe of whoever texts you: if they use Sheng/Kiswahili, reply naturally with Kenyan slang; if they text in plain English, keep it casual English.
 - Never write long paragraphs, never use bullet points, and never sound like customer support or an AI ("How can I assist you?", "Let's see if I can fix it lol").
 - Don't over-explain or volunteer to do work unless they actually ask.
 - Use lowercase often and minimal punctuation, just like fast phone texts.
@@ -132,7 +132,7 @@ async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
   const { version } = await fetchLatestBaileysVersion();
 
-  const sock = makeWASocket({
+ const sock = makeWASocket({
     version,
     auth: state,
     logger: pino({ level: 'silent' }),
@@ -141,13 +141,26 @@ async function startBot() {
 
   sock.ev.on('creds.update', saveCreds);
 
-  sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect, qr } = update;
-
-    if (qr) {
-      console.log('\n📱 Scan this QR code with WhatsApp (Settings -> Linked Devices):');
-      qrcode.generate(qr, { small: true });
+  if (!sock.authState.creds.registered) {
+    const phoneNumber = process.env.PHONE_NUMBER?.replace(/[^0-9]/g, '');
+    if (!phoneNumber) {
+      console.error('Missing PHONE_NUMBER env variable for pairing code!');
+    } else {
+      setTimeout(async () => {
+        try {
+          const code = await sock.requestPairingCode(phoneNumber);
+          console.log(`\n========================================`);
+          console.log(`WHATSAPP PAIRING CODE: ${code}`);
+          console.log(`========================================\n`);
+        } catch (err) {
+          console.error('Failed to request pairing code:', err);
+        }
+      }, 3000);
     }
+  }
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect } = update;
 
     if (connection === 'open') {
       botConnected = true;
